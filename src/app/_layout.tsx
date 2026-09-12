@@ -1,11 +1,29 @@
 import { ClerkProvider } from '@clerk/expo'
 import { tokenCache } from '@clerk/expo/token-cache'
-import { Slot } from 'expo-router'
+import { useFonts } from 'expo-font'
+import { Stack } from 'expo-router'
+import * as SplashScreen from 'expo-splash-screen'
+import { useEffect } from 'react'
+import { Pressable, Text, View } from 'react-native'
+import { PostHogErrorBoundary, PostHogProvider } from 'posthog-react-native'
+
+import { posthog } from '../config/posthog'
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!
 
 if (!publishableKey) {
     throw new Error('Add your Clerk Publishable Key to the .env file')
+}
+
+function RootErrorFallback({ resetError }: { resetError: () => void }) {
+    return (
+        <View>
+            <Text>Something went wrong. Please try again.</Text>
+            <Pressable onPress={resetError}>
+                <Text>Try again</Text>
+            </Pressable>
+        </View>
+    )
 }
 
 export default function RootLayout() {
@@ -28,9 +46,17 @@ export default function RootLayout() {
     if(!fontLoaded) return null;
 
 
-    return (
+    const app = (
         <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
             <Stack screenOptions={{headerShown: false}}></Stack>
         </ClerkProvider>
     )
+
+    return posthog ? (
+        <PostHogProvider client={posthog}>
+            <PostHogErrorBoundary fallback={RootErrorFallback}>
+                {app}
+            </PostHogErrorBoundary>
+        </PostHogProvider>
+    ) : app
 }
